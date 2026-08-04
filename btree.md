@@ -73,17 +73,16 @@ If the left sibling has more than minimum keys:
 Before:
         [10]
        /    \
-   [3,6]    [12,15]  <- wants to delete 12
+   [3,6]    [15]  <- wants to delete 15, but node has only 1 key (minimum)
 
 Action: Borrow from left sibling
-After:
+        [6]           <- largest key from left moves up
+       /    \
+     [3]    [10,15]   <- parent key moves down, right gets 15
+Delete 15:
         [6]
        /    \
-     [3]    [10,12,15]  <- now delete 12
-Delete 12:
-        [6]
-       /    \
-     [3]    [10,15]  ✓
+     [3]    [10]  ✓
 ```
 
 #### Option 2: Borrow from Right Sibling
@@ -93,37 +92,36 @@ If the right sibling has more than minimum keys:
 Before:
         [10]
        /    \
-   [3,6]    [12,15]  <- wants to delete 3
+   [3]      [12,15]  <- wants to delete 3, but node has only 1 key (minimum)
 
 Action: Borrow from right sibling
-After:
-        [12]
+        [12]          <- smallest key from right moves up
        /    \
-   [3,6,10]  [15]  <- now delete 3
+   [3,10]   [15]     <- parent key moves down, left gets 10
 Delete 3:
         [12]
        /    \
-   [6,10]   [15]  ✓
+   [10]     [15]  ✓
 ```
 
 #### Option 3: Merge with Sibling
-If neither sibling can lend a key, merge with a sibling:
+If neither sibling can lend a key (both have minimum keys), merge with a sibling:
 
 ```
 Before:
         [10]
        /    \
-   [3]      [12,15]  <- wants to delete 3 (left has min keys)
+   [3]      [15]    <- both have minimum keys (1 each)
+              ↑ wants to delete 15
 
-Action: Merge with right sibling
-After:
+Action: Merge with left sibling
         [10]
        /    \
-   [3,12,15]        <- merged node
-Delete 3:
+   [3,10,15]        <- merge: left + parent key + right
+Delete 15:
         [10]
        /    \
-   [12,15]          ✓
+   [3]              ✓
 ```
 
 ---

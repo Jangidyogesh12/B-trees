@@ -6,6 +6,13 @@ pub mod clock;
 pub mod lru_cache;
 
 fn main() {
+    let v = vec![1, 3];
+
+    let (a, b) = v.split_at(1);
+
+    println!("a = {:?}", a);
+
+    println!("b = {:?}", b);
     let mut tree = BTree::new();
 
     // Insert keys to create a multi-level B-tree

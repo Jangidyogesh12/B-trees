@@ -1,3 +1,5 @@
+use std::cell::RefMut;
+
 #[derive(Debug)]
 pub struct BTreeNode {
     is_leaf: bool,
@@ -77,6 +79,100 @@ impl BTreeNode {
         }
 
         false
+    }
+
+    fn get_predecessor(&self, idx: usize) -> u32 {
+        let mut node = &self.children[idx];
+
+        while !node.is_leaf {
+            node = &node.children[node.children.len() - 1];
+        }
+
+        *node.keys.last().unwrap()
+    }
+
+    fn get_successor(&self, idx: usize) -> u32 {
+        let mut node = &self.children[idx + 1];
+
+        while !node.is_leaf {
+            node = &node.children[0];
+        }
+
+        *node.keys.first().unwrap()
+    }
+
+    fn borrow_from_prev(&mut self, idx: usize) {
+        let (left, right) = self.children.split_at_mut(idx);
+
+        let sibling = &mut left[idx - 1];
+        let child = &mut right[idx];
+
+        if !sibling.is_leaf {
+            let last_child = sibling.children.pop().unwrap();
+            child.children.insert(0, last_child);
+        }
+
+        let parent_key = self.keys[idx];
+        self.keys[idx - 1] = sibling.keys.pop().unwrap();
+        child.keys.insert(0, parent_key);
+    }
+
+    fn borrow_from_next(&mut self, idx: usize) {
+        let (left, right) = self.children.split_at_mut(idx + 1);
+
+        let child = &mut left[idx];
+        let sibling = &mut right[0];
+
+        if !sibling.is_leaf {
+            let first_key = sibling.children.remove(0);
+            child.children.push(first_key);
+        }
+
+        let parent_key = self.keys[idx];
+        self.keys[idx] = sibling.keys.remove(0);
+        child.keys.push(parent_key);
+    }
+
+    fn merge(&mut self, idx: usize) {
+        let mut left = self.children.remove(idx);
+        let right = self.children.remove(idx);
+
+        let key = self.keys.remove(idx);
+
+        left.keys.push(key);
+
+        left.keys.extend(right.keys);
+
+        left.children.extend(right.children);
+    }
+
+    fn ensure_child_has_enough_keys(&mut self, idx: usize) {
+        // in here the idx is child_idx not the key_idx
+        let min_keys = (M / 2) - 1;
+
+        // if child allredy have enogh keys return do nothing
+        if self.children[idx].keys.len() > min_keys {
+            return;
+        }
+
+        // try to borrow from the left
+        if idx > 0 && self.children[idx - 1].keys.len() > min_keys {
+            self.borrow_from_prev(idx);
+            return;
+        }
+
+        // try to borrow from the right
+        if idx < self.children.len() - 1 && self.children[idx + 1].keys.len() > min_keys {
+            self.borrow_from_next(idx);
+            return;
+        }
+
+        // if cannot borrow - must merge with the siblings
+        if idx > 0 {
+            self.merge(idx - 1);
+        } else {
+            self.merge(idx);
+        }
     }
 }
 

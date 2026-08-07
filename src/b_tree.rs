@@ -1,5 +1,3 @@
-use std::cell::RefMut;
-
 #[derive(Debug)]
 pub struct BTreeNode {
     is_leaf: bool,
@@ -174,6 +172,64 @@ impl BTreeNode {
             self.merge(idx);
         }
     }
+
+    fn delete(&mut self, key: u32) -> bool {
+        // minimum number of keys
+        let min_keys = (M / 2) - 1;
+
+        if self.is_leaf {
+            // Case 1 : key is in leaf node
+            if let Ok(idx) = self.keys.binary_search(&key) {
+                self.keys.remove(idx);
+                return self.keys.len() < min_keys;
+            }
+
+            // key not found in leaf
+            return false;
+        }
+
+        // Case 2 and 3 : key is in the internal node or we need to descend
+        let idx = match self.keys.binary_search(&key) {
+            Ok(idx) => idx,  // Key found in this internal node
+            Err(idx) => idx, // Key should be in child[idx]
+        };
+
+        // Case 3: Key is not in this node - descend to child
+        if idx == self.keys.len() || self.keys[idx] != key {
+            self.ensure_child_has_enough_keys(idx);
+
+            let children_len = self.children.len();
+
+            if idx >= children_len {
+                self.children[children_len - 1].delete(key);
+            }
+
+            self.children[idx].delete(key);
+        }
+
+        // Case 2 : Key is in the internal node
+
+        // replace with its predecessor
+        if self.children[idx].keys.len() > min_keys {
+            let predecessor = self.get_predecessor(idx);
+            self.keys[idx] = predecessor;
+            self.children[idx].delete(predecessor);
+        }
+
+        // replace with its successor
+        if self.children[idx + 1].keys.len() > min_keys {
+            let successor = self.get_successor(idx);
+            self.keys[idx] = successor;
+            self.children[idx + 1].delete(successor);
+        }
+
+        // if both have minimum number of keys then merge
+        self.merge(idx);
+
+        let merge_id = idx;
+
+        self.children[merge_id].delete(key)
+    }
 }
 
 impl BTree {
@@ -209,6 +265,30 @@ impl BTree {
 
                     self.root = Some(new_root);
                 }
+            }
+        }
+    }
+
+    pub fn delete(&mut self, key: u32) {
+        // Check if tree is empty
+        let root = match &mut self.root {
+            None => return,
+            Some(root) => root,
+        };
+
+        // delete the key recursively
+        let _need_rebalancing = root.delete(key);
+
+        // if the rood has no key left but has children
+        // the tree height should decrease
+
+        if root.keys.is_empty() && !root.children.is_empty() {
+            let old_root = self.root.take().unwrap();
+
+            let mut children = old_root.children;
+
+            if children.len() == 1 {
+                self.root = Some(*children.remove(0));
             }
         }
     }

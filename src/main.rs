@@ -6,11 +6,6 @@ pub mod clock;
 pub mod lru_cache;
 
 fn main() {
-    let v = vec![1, 3];
-
-    let a = v.binary_search(&4);
-
-    println!("a = {:?}", a);
     let mut tree = BTree::new();
 
     // Insert keys to create a multi-level B-tree
@@ -48,4 +43,6 @@ fn main() {
     println!("Contains 4 after deletion? {}", tree.search(4)); // Output: false
     println!("Contains 3? {}", tree.search(3)); // Output: true
     println!("Contains 5? {}", tree.search(5)); // Output: true
+
+    println!("{:?}", tree.root)
 }

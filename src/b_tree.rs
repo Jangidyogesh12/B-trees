@@ -103,14 +103,14 @@ impl BTreeNode {
         let (left, right) = self.children.split_at_mut(idx);
 
         let sibling = &mut left[idx - 1];
-        let child = &mut right[idx];
+        let child = &mut right[0];
 
         if !sibling.is_leaf {
             let last_child = sibling.children.pop().unwrap();
             child.children.insert(0, last_child);
         }
 
-        let parent_key = self.keys[idx];
+        let parent_key = self.keys[idx - 1];
         self.keys[idx - 1] = sibling.keys.pop().unwrap();
         child.keys.insert(0, parent_key);
     }
@@ -142,6 +142,8 @@ impl BTreeNode {
         left.keys.extend(right.keys);
 
         left.children.extend(right.children);
+
+        self.children.insert(idx, left);
     }
 
     fn ensure_child_has_enough_keys(&mut self, idx: usize) {
@@ -201,10 +203,10 @@ impl BTreeNode {
             let children_len = self.children.len();
 
             if idx >= children_len {
-                self.children[children_len - 1].delete(key);
+                return self.children[children_len - 1].delete(key);
             }
 
-            self.children[idx].delete(key);
+            return self.children[idx].delete(key);
         }
 
         // Case 2 : Key is in the internal node
@@ -213,14 +215,14 @@ impl BTreeNode {
         if self.children[idx].keys.len() > min_keys {
             let predecessor = self.get_predecessor(idx);
             self.keys[idx] = predecessor;
-            self.children[idx].delete(predecessor);
+            return self.children[idx].delete(predecessor);
         }
 
         // replace with its successor
         if self.children[idx + 1].keys.len() > min_keys {
             let successor = self.get_successor(idx);
             self.keys[idx] = successor;
-            self.children[idx + 1].delete(successor);
+            return self.children[idx + 1].delete(successor);
         }
 
         // if both have minimum number of keys then merge

@@ -1,6 +1,6 @@
 use std::{cell::RefCell, rc::Rc};
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct BPTreeNode {
     is_leaf: bool,
     keys: Vec<u32>,
@@ -25,7 +25,7 @@ impl BPTreeNode {
     }
 
     fn split_internal_child(&mut self, child_idx: usize) {
-        let  child = self.children.remove(child_idx);
+        let child = self.children.remove(child_idx);
         let split_point = (child.borrow().keys.len() + 1) / 2;
         let mid_key = child.borrow().keys[split_point - 1];
 
@@ -37,7 +37,8 @@ impl BPTreeNode {
 
         self.keys.insert(child_idx, mid_key);
         self.children.insert(child_idx, child);
-        self.children.insert(child_idx + 1, Rc::new(RefCell::new(right_sibling)));
+        self.children
+            .insert(child_idx + 1, Rc::new(RefCell::new(right_sibling)));
     }
 
     fn split_leaf_child(&mut self, child_idx: usize) {
@@ -51,9 +52,10 @@ impl BPTreeNode {
 
         self.keys.insert(child_idx, mid_key);
         self.children.insert(child_idx, child);
-        self.children.insert(child_idx + 1, Rc::new(RefCell::new(right_sibling)));
+        self.children
+            .insert(child_idx + 1, Rc::new(RefCell::new(right_sibling)));
 
-        let right = self.children[child_idx + 1].clone();
+        let right = Rc::clone(&self.children[child_idx + 1]);
         let left = &mut self.children[child_idx];
 
         right.borrow_mut().next = left.borrow_mut().next.take();

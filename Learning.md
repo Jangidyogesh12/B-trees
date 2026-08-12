@@ -43,7 +43,7 @@ Use this file as both a roadmap and a reference. Do not only read it. Rust maste
   - [x] [Day 20: Strings In Rust](#day-20-strings-in-rust)
   - [x] [Day 21: HashMap Usage](#day-21-hashmap-usage)
   - [x] [Day 22: HashMap Internals And Collision Handling](#day-22-hashmap-internals-and-collision-handling)
-  - [ ] [Day 23: `Result` And Error Handling](#day-23-result-and-error-handling)
+  - [x] [Day 23: `Result` And Error Handling](#day-23-result-and-error-handling)
   - [ ] [Day 24: Panic And Unrecoverable Errors](#day-24-panic-and-unrecoverable-errors)
   - [ ] [Day 25: Iterators](#day-25-iterators)
   - [ ] [Day 26: Closures](#day-26-closures)

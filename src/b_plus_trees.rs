@@ -1,14 +1,15 @@
-#[derive(Debug)]
+use std::{cell::RefCell, rc::Rc};
+
+#[derive(Debug, Clone)]
 pub struct BPTreeNode {
     is_leaf: bool,
     keys: Vec<u32>,
-    children: Vec<Box<BPTreeNode>>,
-    next: Option<Box<BPTreeNode>>,
+    children: Vec<Rc<RefCell<BPTreeNode>>>,
+    next: Option<Rc<RefCell<BPTreeNode>>>,
 }
 
 pub struct BPTree {
-    root: Option<BPTreeNode>,
-    head: Option<Box<BPTreeNode>>,
+    pub root: Option<BPTreeNode>,
 }
 
 const M: usize = 4;
@@ -24,45 +25,45 @@ impl BPTreeNode {
     }
 
     fn split_internal_child(&mut self, child_idx: usize) {
-        let mut child = self.children.remove(child_idx);
-        let split_point = (child.keys.len() + 1) / 2;
-        let mid_key = child.keys[split_point - 1];
+        let  child = self.children.remove(child_idx);
+        let split_point = (child.borrow().keys.len() + 1) / 2;
+        let mid_key = child.borrow().keys[split_point - 1];
 
         let mut right_sibling = BPTreeNode::new(false);
-        right_sibling.keys = child.keys.split_off(split_point);
-        right_sibling.children = child.children.split_off(split_point);
+        right_sibling.keys = child.borrow_mut().keys.split_off(split_point);
+        right_sibling.children = child.borrow_mut().children.split_off(split_point);
 
-        _ = child.keys.pop();
+        _ = child.borrow_mut().keys.pop();
 
         self.keys.insert(child_idx, mid_key);
         self.children.insert(child_idx, child);
-        self.children.insert(child_idx + 1, Box::new(right_sibling));
+        self.children.insert(child_idx + 1, Rc::new(RefCell::new(right_sibling)));
     }
 
     fn split_leaf_child(&mut self, child_idx: usize) {
-        let mut child = self.children.remove(child_idx);
-        let split_point = (child.keys.len() + 1) / 2;
+        let child = self.children.remove(child_idx);
+        let split_point = (child.borrow().keys.len() + 1) / 2;
 
         let mut right_sibling = BPTreeNode::new(true);
-        right_sibling.keys = child.keys.split_off(split_point);
+        right_sibling.keys = child.borrow_mut().keys.split_off(split_point);
 
         let mid_key = right_sibling.keys[0];
 
         self.keys.insert(child_idx, mid_key);
         self.children.insert(child_idx, child);
-        self.children.insert(child_idx + 1, Box::new(right_sibling));
+        self.children.insert(child_idx + 1, Rc::new(RefCell::new(right_sibling)));
 
-        let mut right = self.children.remove(child_idx + 1);
+        let right = self.children[child_idx + 1].clone();
         let left = &mut self.children[child_idx];
 
-        right.next = left.next.take();
-        left.next = Some(right);
+        right.borrow_mut().next = left.borrow_mut().next.take();
+        left.borrow_mut().next = Some(right);
     }
 
     fn split_child(&mut self, child_idx: usize) {
         let child = &self.children[child_idx];
 
-        if child.is_leaf {
+        if child.borrow().is_leaf {
             self.split_leaf_child(child_idx);
         } else {
             self.split_internal_child(child_idx);
@@ -84,7 +85,7 @@ impl BPTreeNode {
             Err(i) => i,
         };
 
-        let child_overflowed = self.children[idx].insert(key);
+        let child_overflowed = self.children[idx].borrow_mut().insert(key);
 
         if child_overflowed {
             self.split_child(idx);
@@ -98,10 +99,7 @@ impl BPTreeNode {
 
 impl BPTree {
     pub fn new() -> Self {
-        Self {
-            root: None,
-            head: None,
-        }
+        Self { root: None }
     }
 
     pub fn insert(&mut self, key: u32) {
@@ -117,7 +115,7 @@ impl BPTree {
                 if overflow {
                     let old_root = self.root.take().unwrap();
                     let mut new_root = BPTreeNode::new(false);
-                    new_root.children.push(Box::new(old_root));
+                    new_root.children.push(Rc::new(RefCell::new(old_root)));
                     new_root.split_child(0);
                     self.root = Some(new_root);
                 }

@@ -52,10 +52,76 @@ impl BPTreeNode {
         self.children.insert(child_idx, child);
         self.children.insert(child_idx + 1, Box::new(right_sibling));
 
-        let left = &mut self.children[child_idx];
         let mut right = self.children.remove(child_idx + 1);
+        let left = &mut self.children[child_idx];
 
         right.next = left.next.take();
         left.next = Some(right);
+    }
+
+    fn split_child(&mut self, child_idx: usize) {
+        let child = &self.children[child_idx];
+
+        if child.is_leaf {
+            self.split_leaf_child(child_idx);
+        } else {
+            self.split_internal_child(child_idx);
+        }
+    }
+
+    fn insert(&mut self, key: u32) -> bool {
+        if self.is_leaf {
+            if self.keys.contains(&key) {
+                return false;
+            }
+            self.keys.push(key);
+            self.keys.sort();
+            return self.keys.len() == M;
+        }
+
+        let idx = match self.keys.binary_search(&key) {
+            Ok(_) => return false,
+            Err(i) => i,
+        };
+
+        let child_overflowed = self.children[idx].insert(key);
+
+        if child_overflowed {
+            self.split_child(idx);
+
+            return self.keys.len() == M;
+        }
+
+        false
+    }
+}
+
+impl BPTree {
+    pub fn new() -> Self {
+        Self {
+            root: None,
+            head: None,
+        }
+    }
+
+    pub fn insert(&mut self, key: u32) {
+        match &mut self.root {
+            None => {
+                let mut node = BPTreeNode::new(true);
+                node.keys.push(key);
+                self.root = Some(node);
+            }
+            Some(root) => {
+                let overflow = root.insert(key);
+
+                if overflow {
+                    let old_root = self.root.take().unwrap();
+                    let mut new_root = BPTreeNode::new(false);
+                    new_root.children.push(Box::new(old_root));
+                    new_root.split_child(0);
+                    self.root = Some(new_root);
+                }
+            }
+        }
     }
 }

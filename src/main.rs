@@ -50,5 +50,9 @@ fn main() {
     tree.insert(15);
     tree.insert(16);
 
-    println!("{:?}", tree.root)
+    println!("{:?}", tree.root);
+
+    let a = tree.search(18);
+
+    println!("{a}")
 }

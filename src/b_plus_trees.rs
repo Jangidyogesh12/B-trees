@@ -24,6 +24,19 @@ impl BPTreeNode {
         }
     }
 
+    fn search(&self, key: u32) -> bool {
+        if self.is_leaf {
+            return self.keys.contains(&key);
+        }
+
+        let idx = match self.keys.binary_search(&key) {
+            Ok(_) => return true,
+            Err(idx) => idx,
+        };
+
+        self.children[idx].borrow().search(key)
+    }
+
     fn split_internal_child(&mut self, child_idx: usize) {
         let child = self.children.remove(child_idx);
         let split_point = (child.borrow().keys.len() + 1) / 2;
@@ -102,6 +115,13 @@ impl BPTreeNode {
 impl BPTree {
     pub fn new() -> Self {
         Self { root: None }
+    }
+
+    pub fn search(&self, key: u32) -> bool {
+        match &self.root {
+            None => false,
+            Some(root) => root.search(key),
+        }
     }
 
     pub fn insert(&mut self, key: u32) {

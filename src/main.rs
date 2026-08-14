@@ -1,5 +1,3 @@
-use std::{cell::RefCell, rc::Rc};
-
 use crate::b_plus_trees::BPTree;
 
 pub mod b_plus_trees;
@@ -8,29 +6,8 @@ pub mod buffer_pool;
 pub mod clock;
 pub mod lru_cache;
 
-#[derive(Debug)]
-pub struct Node {
-    val: u32,
-    ptr: Option<Rc<RefCell<Node>>>,
-}
-
 fn main() {
     let mut tree = BPTree::new();
-
-    let n3 = Rc::new(RefCell::new(Node { val: 4, ptr: None }));
-
-    let n2 = Node {
-        val: 3,
-        ptr: Some(Rc::clone(&n3)),
-    };
-
-    dbg!(&n3);
-
-    n3.borrow_mut().val = 9;
-
-    dbg!(&n3);
-
-    dbg!(Rc::strong_count(&n3));
 
     // Insert keys to create a multi-level B-tree
     tree.insert(1);

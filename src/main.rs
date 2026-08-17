@@ -3,7 +3,6 @@ use crate::b_plus_trees::BPTree;
 pub mod b_plus_trees;
 pub mod b_tree;
 
-
 fn main() {
     let mut tree = BPTree::new();
 
@@ -18,4 +17,10 @@ fn main() {
     tree.delete(50);
 
     println!("{:?}", tree.root);
+
+    let v = vec![2, 3, 4, 5];
+
+    let b: Vec<i32> = v.into_iter().map(|x| x * 2).collect();
+
+    println!("{:?}", b);
 }

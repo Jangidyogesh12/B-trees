@@ -146,32 +146,34 @@ impl BTreeNode {
         self.children.insert(idx, left);
     }
 
-    fn ensure_child_has_enough_keys(&mut self, idx: usize) {
+    fn ensure_child_has_enough_keys(&mut self, idx: usize) -> usize {
         // in here the idx is child_idx not the key_idx
         let min_keys = (M / 2) - 1;
 
         // if child allredy have enogh keys return do nothing
         if self.children[idx].keys.len() > min_keys {
-            return;
+            return idx;
         }
 
         // try to borrow from the left
         if idx > 0 && self.children[idx - 1].keys.len() > min_keys {
             self.borrow_from_prev(idx);
-            return;
+            return idx;
         }
 
         // try to borrow from the right
         if idx < self.children.len() - 1 && self.children[idx + 1].keys.len() > min_keys {
             self.borrow_from_next(idx);
-            return;
+            return idx;
         }
 
         // if cannot borrow - must merge with the siblings
         if idx > 0 {
             self.merge(idx - 1);
+            return idx - 1;
         } else {
             self.merge(idx);
+            return idx;
         }
     }
 
@@ -198,15 +200,9 @@ impl BTreeNode {
 
         // Case 3: Key is not in this node - descend to child
         if idx == self.keys.len() || self.keys[idx] != key {
-            self.ensure_child_has_enough_keys(idx);
+            let new_idx = self.ensure_child_has_enough_keys(idx);
 
-            let children_len = self.children.len();
-
-            if idx >= children_len {
-                return self.children[children_len - 1].delete(key);
-            }
-
-            return self.children[idx].delete(key);
+            return self.children[new_idx].delete(key);
         }
 
         // Case 2 : Key is in the internal node

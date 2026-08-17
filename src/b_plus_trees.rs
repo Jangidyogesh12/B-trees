@@ -26,11 +26,11 @@ impl BPTreeNode {
 
     fn search(&self, key: u32) -> bool {
         if self.is_leaf {
-            return self.keys.contains(&key);
+            return self.keys.binary_search(&key).is_ok();
         }
 
         let idx = match self.keys.binary_search(&key) {
-            Ok(_) => return true,
+            Ok(idx) => idx + 1,
             Err(idx) => idx,
         };
 
@@ -110,6 +110,127 @@ impl BPTreeNode {
 
         false
     }
+
+    fn borrow_from_prev(&mut self, child_idx: usize) {
+        let (left, right) = self.children.split_at_mut(child_idx);
+        let sibling = &mut left[child_idx - 1];
+        let child = &mut right[0];
+
+        if !child.borrow().is_leaf {
+            let last_child = sibling.borrow_mut().children.pop();
+            child.borrow_mut().children.insert(0, last_child.unwrap());
+            let parent_key = self.keys[child_idx - 1];
+            self.keys[child_idx - 1] = sibling.borrow_mut().keys.pop().unwrap();
+            child.borrow_mut().keys.insert(0, parent_key);
+        } else {
+            let parent_key = sibling.borrow_mut().keys.pop().unwrap();
+            child.borrow_mut().keys.insert(0, parent_key);
+            self.keys[child_idx - 1] = parent_key;
+        }
+    }
+
+    fn borrow_from_next(&mut self, child_idx: usize) {
+        let (left, right) = self.children.split_at_mut(child_idx + 1);
+        let sibling = &mut right[0];
+        let child = &mut left[child_idx];
+
+        if !child.borrow().is_leaf {
+            let first_child = sibling.borrow_mut().children.remove(0);
+            child.borrow_mut().children.push(first_child);
+
+            let parent_key = self.keys[child_idx];
+            self.keys[child_idx] = sibling.borrow_mut().keys.remove(0);
+            child.borrow_mut().keys.push(parent_key);
+        } else {
+            child
+                .borrow_mut()
+                .keys
+                .push(sibling.borrow_mut().keys.remove(0));
+            let parent_key = sibling.borrow().keys[0];
+            self.keys[child_idx] = parent_key;
+        }
+    }
+
+    fn merge(&mut self, child_idx: usize) {
+        let left = self.children.remove(child_idx);
+        let right = self.children.remove(child_idx);
+        let parent_key = self.keys.remove(child_idx);
+
+        if left.borrow().is_leaf {
+            left.borrow_mut()
+                .keys
+                .extend(right.borrow().keys.iter().copied());
+            left.borrow_mut().next = right.borrow().next.clone();
+        } else {
+            left.borrow_mut().keys.push(parent_key);
+            left.borrow_mut()
+                .keys
+                .extend(right.borrow().keys.iter().copied());
+            left.borrow_mut()
+                .children
+                .extend(right.borrow().children.clone());
+        }
+
+        self.children.insert(child_idx, left);
+    }
+
+    fn ensure_child_has_enough_keys(&mut self, child_idx: usize) -> usize {
+        let min_keys = (M / 2) - 1;
+
+        if self.children[child_idx].borrow().keys.len() > min_keys {
+            return child_idx;
+        }
+
+        if child_idx > 0 && self.children[child_idx - 1].borrow().keys.len() > min_keys {
+            self.borrow_from_prev(child_idx);
+            return child_idx;
+        }
+
+        if child_idx < (self.children.len() - 1)
+            && self.children[child_idx + 1].borrow().keys.len() > min_keys
+        {
+            self.borrow_from_next(child_idx);
+            return child_idx;
+        }
+
+        if child_idx > 0 {
+            self.merge(child_idx - 1);
+            return child_idx - 1;
+        } else {
+            self.merge(child_idx);
+            return child_idx;
+        }
+    }
+
+    fn delete(&mut self, key: u32) -> bool {
+        let min_keys = (M / 2) - 1;
+
+        if self.is_leaf {
+            // Case 1 key is in the leaf node
+            if let Ok(idx) = self.keys.binary_search(&key) {
+                self.keys.remove(idx);
+                return self.keys.len() < min_keys;
+            }
+
+            // Key not found in the the leaf node
+            return false;
+        }
+
+        // Key is in the internal node or we need to descend
+        match self.keys.binary_search(&key) {
+            Ok(idx) => {
+                // If key is in the internal node
+                let new_idx = self.ensure_child_has_enough_keys(idx + 1);
+                return self.children[new_idx].borrow_mut().delete(key);
+            }
+            Err(idx) => {
+                // If key is not in the internal node descend
+                let new_idx = self.ensure_child_has_enough_keys(idx);
+
+                return self.children[new_idx].borrow_mut().delete(key);
+            }
+        };
+    }
 }
 
 impl BPTree {
@@ -141,6 +262,25 @@ impl BPTree {
                     new_root.split_child(0);
                     self.root = Some(new_root);
                 }
+            }
+        }
+    }
+
+    pub fn delete(&mut self, key: u32) {
+        let root = match &mut self.root {
+            None => return,
+            Some(root) => root,
+        };
+
+        let _need_rebalancing = root.delete(key);
+
+        if root.keys.is_empty() && !root.children.is_empty() {
+            let old_root = self.root.take().unwrap();
+
+            let mut children = old_root.children;
+
+            if children.len() == 1 {
+                self.root = Some(Rc::try_unwrap(children.remove(0)).unwrap().into_inner());
             }
         }
     }

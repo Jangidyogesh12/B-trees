@@ -15,7 +15,7 @@ fn main() {
     tree.insert(90);
     tree.insert(100);
     tree.delete(100);
-    // tree.delete(50);
+    tree.delete(50);
 
     println!("{:?}", tree.root);
 }
